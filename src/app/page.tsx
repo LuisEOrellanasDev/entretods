@@ -23,7 +23,7 @@ export default function InitialPage() {
           <p className="text-4xl font-bold text-center max-w-2xl mx-auto">Organiza gastos con tus amigos de manera simple</p>
           <p className="text-gray-600 text-center mt-4 max-w-xl mx-auto">Registra viajes, apunta gastos compartidos y al final ve quién debe a quién</p>
 
-          <button className="bg-blue-500 text-white hover:bg-blue-600 hover:text-white px-4 mt-10 py-2 rounded">Comenzar un viaje</button>
+          <Link href="/register" className="bg-blue-500 text-white hover:bg-blue-600 hover:text-white px-4 mt-10 py-2 rounded">Comenzar un viaje</Link>
           <div className="flex flex-row gap-4 mt-10">
             <IconDescripcion icon="✈️" text="Crea viajes" />
             <IconDescripcion icon="💰" text="Registra gastos" />

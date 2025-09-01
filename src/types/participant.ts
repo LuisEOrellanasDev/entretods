@@ -20,6 +20,7 @@ export interface AddExpenseFormProps {
   travelId: string;
   participants: Participant[];
   currentUserId: string;
+  onSuccess: () => void;
 }
 
 export interface RemoveParticipantFormProps {

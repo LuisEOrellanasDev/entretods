@@ -6,7 +6,6 @@ import { formatCurrency } from '@/lib/utils/currency'
 import { deleteExpense } from '../_actions/deleteExpense'
 import { EditExpenseForm } from './EditExpenseForm'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { getDisplayName, getUserInitials } from '@/lib/utils/user'
 import { Participant } from '@/types/participant'
 
 interface ExpenseData {
@@ -40,9 +39,10 @@ interface ExpenseListProps {
   expenses: ExpenseData[]
   participants: Participant[]
   currentUserId: string
+  travelIsActive: boolean
 }
 
-export function ExpenseList({ expenses, travelId, participants, currentUserId }: ExpenseListProps) {
+export function ExpenseList({ expenses, travelId, participants, currentUserId, travelIsActive }: ExpenseListProps) {
   const [editingExpense, setEditingExpense] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -180,13 +180,16 @@ export function ExpenseList({ expenses, travelId, participants, currentUserId }:
                     </div>
                   </div>
                   <div className="flex flex-col space-y-1">
-                    <button
+
+                    {travelIsActive && (<button
                       onClick={() => setEditingExpense(expense.id)}
                       className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
                     >
                       Editar
-                    </button>
-                    <button
+                    </button>)}
+
+
+                    {travelIsActive && (<button
                       onClick={() => setConfirmDialog({
                         isOpen: true,
                         expenseId: expense.id,
@@ -196,7 +199,7 @@ export function ExpenseList({ expenses, travelId, participants, currentUserId }:
                       className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors disabled:opacity-50"
                     >
                       {isDeleting === expense.id ? 'Eliminando...' : 'Eliminar'}
-                    </button>
+                    </button>)}
                   </div>
                 </div>
               </div>

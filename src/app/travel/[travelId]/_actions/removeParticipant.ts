@@ -3,7 +3,6 @@
 import { prisma } from '@/lib/prisma'
 import { requireAuth, requireTravelAdmin } from '@/lib/auth/utils'
 import { revalidatePath } from 'next/cache'
-import { logAuditEvent, AuditActions, AuditResources } from '@/lib/utils/auditLog'
 import { sanitizeErrorMessage } from '@/lib/utils/errors'
 import { calculateTravelSettlement } from '@/lib/settlement'
 
@@ -94,7 +93,6 @@ export async function removeParticipant(data: RemoveParticipantData) {
     const settlement = calculateTravelSettlement(expenseData, users)
     const participantBalance = settlement.balances.find(b => b.userId === data.userId)
 
-    // Validation: Check if participant has any expense history
     if (expenses.length > 0) {
       throw new Error(`No se puede remover al participante porque ya tiene historial de gastos en este viaje. Los participantes solo pueden ser removidos si no han participado en ningún gasto.`)
     }
@@ -109,20 +107,6 @@ export async function removeParticipant(data: RemoveParticipantData) {
       data: {
         leftAt: exitDate,
         exitBalance: participantBalance?.balance || 0
-      }
-    })
-
-    await logAuditEvent({
-      userId: session.user.id,
-      action: AuditActions.TRAVEL_LEAVE,
-      resource: AuditResources.TRAVEL,
-      resourceId: data.travelId,
-      details: {
-        participantId: data.userId,
-        participantName: `${participant.user.firstName} ${participant.user.lastName}`,
-        exitDate: exitDate.toISOString(),
-        exitBalance: participantBalance?.balance || 0,
-        removedBy: session.user.id
       }
     })
 

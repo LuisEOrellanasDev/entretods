@@ -11,7 +11,6 @@ interface BalanceSummaryProps {
 }
 
 export function BalanceSummary({ balances }: BalanceSummaryProps) {
-  // Sort balances: positive first (owed money), then negative (owes money)
   const sortedBalances = [...balances].sort((a, b) => b.balance - a.balance);
 
   return (
@@ -19,8 +18,12 @@ export function BalanceSummary({ balances }: BalanceSummaryProps) {
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Lista de Totales</h3>
       <div className="space-y-2">
         {sortedBalances.map((participant) => {
-          const isPositive = participant.balance > 0;
-          const isZero = Math.abs(participant.balance) < 0.01;
+          const balance = participant.balance;
+          const EPSILON = 0.01;
+
+          const isZero = Math.abs(balance) < EPSILON;
+          const isPositive = balance > EPSILON;
+          const isNegative = balance < -EPSILON;
 
           return (
             <div
@@ -35,13 +38,19 @@ export function BalanceSummary({ balances }: BalanceSummaryProps) {
               <span className="font-medium text-gray-900">
                 {participant.name}
               </span>
-              <span className={`font-semibold ${isZero
-                ? 'text-green-700'
-                : isPositive
-                  ? 'text-blue-700'
-                  : 'text-red-700'
-                }`}>
-                {isZero ? '✓ Al día' : formatCurrency(participant.balance)}
+              <span
+                className={`font-semibold ${isZero
+                  ? 'text-green-700'
+                  : isPositive
+                    ? 'text-blue-700'
+                    : 'text-red-700'
+                  }`}
+              >
+                {isZero
+                  ? '✓ Al día'
+                  : isPositive
+                    ? `+${formatCurrency(balance)}`
+                    : formatCurrency(balance)}
               </span>
             </div>
           );

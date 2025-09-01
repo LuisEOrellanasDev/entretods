@@ -27,7 +27,6 @@ export default function CreateTravelForm() {
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
-    // Add invited emails to form data
     formData.append('invitedEmails', JSON.stringify(invitedEmails));
 
     try {
@@ -39,7 +38,6 @@ export default function CreateTravelForm() {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      {/* Back Button */}
       <div className="mb-6">
         <BackButton
           href="/dashboard"
@@ -77,7 +75,6 @@ export default function CreateTravelForm() {
           />
         </div>
 
-        {/* Sección de Invitar Participantes */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Invitar Participantes

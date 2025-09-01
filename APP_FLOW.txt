@@ -1,0 +1,547 @@
+===============================================================================
+                        ENTRETODS - FLUJO COMPLETO DE LA APLICACIÓN
+===============================================================================
+
+DESCRIPCIÓN GENERAL
+-------------------
+Entretods es una aplicación web colaborativa para gestionar gastos de viaje entre 
+amigos. Utiliza Next.js 14, Firebase Authentication, PostgreSQL con Prisma, y 
+un sistema de liquidación inteligente para calcular deudas y sugerir pagos óptimos.
+
+TECNOLOGÍAS CLAVE
+-----------------
+- NUESTRAS: Server Actions, Middleware personalizado, Algoritmo de liquidación, 
+  Gestión de cookies, Validaciones de acceso, Rate limiting
+- EXTERNAS: Firebase Auth, Firebase Admin SDK, Prisma ORM, PostgreSQL, Next.js
+
+===============================================================================
+                                FLUJO DEL USUARIO
+===============================================================================
+
+1. PÁGINA DE BIENVENIDA (/)
+===========================
+
+Archivo: src/app/page.tsx
+
+QUÉ MUESTRA:
+- Header con logo "entretods"
+- Botones "Iniciar Sesión" y "Registrarse"
+- Mensaje: "Organiza gastos con tus amigos de manera simple"
+- Iconos: ✈️ Crea viajes, 💰 Registra gastos, ⚖️ Liquida balances
+
+LÓGICA DEL MIDDLEWARE:
+- Si el usuario YA tiene cookie de sesión → redirige automáticamente a /dashboard
+- Si NO tiene sesión → muestra la landing page
+- Código en src/middleware.ts líneas 56-61
+
+RATE LIMITING:
+- Aplicado a rutas de autenticación: 10 intentos por minuto por IP
+- Aplicado a server actions: 30 intentos por minuto por IP
+
+---
+
+2. REGISTRO DE USUARIO (/register)
+==================================
+
+Archivo: src/app/register/page.tsx
+
+CAMPOS DEL FORMULARIO:
+- Nombre (firstName)
+- Apellido (lastName)
+- Email
+- Contraseña
+
+FLUJO PASO A PASO:
+1. Usuario llena formulario y hace submit → handleSubmit() línea 23
+2. FIREBASE AUTH (EXTERNA): createUserWithEmailAndPassword(auth, email, password)
+3. FIREBASE AUTH (EXTERNA): updateProfile(user, displayName)
+4. FIREBASE AUTH (EXTERNA): user.getIdToken() - obtiene token JWT
+5. SERVER ACTION (NUESTRA): registerWithFirebaseAction(idToken, firstName, lastName)
+
+DENTRO DEL SERVER ACTION (src/app/register/_actions/register.ts):
+- FIREBASE ADMIN (EXTERNA): adminAuth.verifyIdToken(idToken) - verifica el token
+- PRISMA (EXTERNA): prisma.user.upsert() - sincroniza usuario en PostgreSQL
+- NUESTRA: createSessionCookieFromIdToken(idToken) - crea cookie de sesión
+
+6. REDIRECCIÓN: router.replace('/dashboard')
+
+MANEJO DE ERRORES:
+- Errores de Firebase se muestran en pantalla
+- Validaciones de campos requeridos
+- Estado de loading durante el proceso
+
+---
+
+3. INICIO DE SESIÓN (/login)
+============================
+
+Archivo: src/app/login/page.tsx
+
+CAMPOS DEL FORMULARIO:
+- Email
+- Contraseña
+
+FLUJO PASO A PASO:
+1. Usuario envía credenciales → handleSubmit() línea 17
+2. FIREBASE AUTH (EXTERNA): signInWithEmailAndPassword(auth, email, password)
+3. FIREBASE AUTH (EXTERNA): user.getIdToken() - token fresco
+4. SERVER ACTION (NUESTRA): createSessionAction(idToken)
+
+DENTRO DEL SERVER ACTION (src/app/login/_actions/createSesion.ts):
+- FIREBASE ADMIN (EXTERNA): adminAuth.verifyIdToken(idToken)
+- PRISMA (EXTERNA): prisma.user.upsert() - actualiza/crea usuario en DB
+- NUESTRA: createSessionCookieFromIdToken(idToken)
+
+5. REDIRECCIÓN: router.replace('/dashboard')
+
+DIFERENCIA CON REGISTRO:
+- No actualiza displayName en Firebase
+- Puede crear usuario en DB si no existe (upsert)
+
+---
+
+4. MIDDLEWARE DE PROTECCIÓN
+===========================
+
+Archivo: src/middleware.ts
+
+RUTAS PROTEGIDAS:
+- /dashboard
+- /travel/*
+- /create-travel
+
+LÓGICA DE PROTECCIÓN:
+```
+if (isProtectedRoute) {
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+}
+```
+
+HEADERS DE SEGURIDAD APLICADOS:
+- X-Frame-Options: DENY
+- X-Content-Type-Options: nosniff
+- Content-Security-Policy con nonce dinámico
+- Referrer-Policy: strict-origin-when-cross-origin
+
+REDIRECTS LEGACY:
+- /auth/login → /login
+- /auth/register → /register
+
+---
+
+5. FUNCIÓN DE AUTENTICACIÓN CENTRAL
+===================================
+
+Archivo: src/lib/auth.ts
+
+FUNCIÓN auth() (NUESTRA):
+```
+export async function auth() {
+  const decoded = await verifySessionCookie(); // Verifica cookie de sesión
+  if (!decoded?.uid) return null;
+  
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { firebaseUid: decoded.uid },
+        decoded.email ? { email: decoded.email } : undefined,
+      ]
+    }
+  });
+  
+  return { user: { ...user, name: `${firstName} ${lastName}`.trim() } };
+}
+```
+
+PROCESO:
+1. Verifica cookie de sesión con Firebase Admin
+2. Busca usuario en PostgreSQL por firebaseUid o email
+3. Retorna objeto de sesión con datos del usuario
+4. Si algo falla, retorna null
+
+---
+
+6. GESTIÓN DE COOKIES DE SESIÓN
+===============================
+
+Archivo: src/lib/firebase/firebaseSesion.ts
+
+CREAR COOKIE (NUESTRA):
+```
+export async function createSessionCookieFromIdToken(idToken: string) {
+  // FIREBASE ADMIN: Crear cookie de sesión
+  const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+  
+  // NUESTRA: Configurar cookie en el navegador
+  cookieStore.set(COOKIE_NAME, sessionCookie, {
+    httpOnly: true,                    // No accesible desde JavaScript
+    secure: NODE_ENV === 'production', // HTTPS en producción
+    sameSite: 'lax',                   // Protección CSRF
+    maxAge: Math.floor(expiresIn / 1000),
+    path: '/',
+  });
+}
+```
+
+VERIFICAR COOKIE (NUESTRA):
+```
+export async function verifySessionCookie() {
+  const sessionCookie = cookieStore.get(COOKIE_NAME)?.value;
+  if (!sessionCookie) return null;
+  
+  // FIREBASE ADMIN: Verificar validez de la cookie
+  const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+  return decoded;
+}
+```
+
+LIMPIAR COOKIE (NUESTRA):
+```
+export async function clearSessionCookie() {
+  cookieStore.delete(COOKIE_NAME);
+}
+```
+
+---
+
+7. DASHBOARD PRINCIPAL (/dashboard)
+===================================
+
+Archivo: src/app/dashboard/page.tsx
+
+VERIFICACIÓN DE ACCESO:
+```
+const session = await auth()
+if (!session?.user?.id) {
+  redirect('/login')
+}
+```
+
+QUÉ MUESTRA:
+- Saludo personalizado: "Bienvenido, [nombre]"
+- Botón "Cerrar Sesión" (form con server action)
+- Lista de viajes del usuario
+- Botón "Crear Viaje"
+
+QUERY DE DATOS (PRISMA):
+```
+const userTravels = await prisma.userTravel.findMany({
+  where: { userId: session.user.id },
+  include: {
+    travel: {
+      include: {
+        _count: { 
+          select: { expenses: true, userTravels: true } 
+        }
+      }
+    }
+  },
+  orderBy: { travel: { createdAt: 'desc' } }
+})
+```
+
+DIFERENCIACIÓN VISUAL:
+- Viajes activos (isActive: true): fondo blanco, texto normal
+- Viajes finalizados (isActive: false): fondo gris, opacidad reducida
+
+INFORMACIÓN POR VIAJE:
+- Título y descripción
+- Fecha de creación
+- Número de participantes activos
+- Número de gastos
+- Rol del usuario (admin/member)
+- Estado (Activo/Finalizado)
+
+---
+
+8. PÁGINA DE VIAJE INDIVIDUAL (/travel/[travelId])
+==================================================
+
+Archivo: src/app/travel/[travelId]/page.tsx
+
+VERIFICACIONES DE ACCESO:
+1. Usuario autenticado: await auth()
+2. Usuario pertenece al viaje: prisma.userTravel.findFirst()
+3. Viaje existe: prisma.travel.findUnique()
+
+QUERY COMPLEJA DE DATOS:
+```
+const travel = await prisma.travel.findUnique({
+  where: { id: travelId },
+  include: {
+    userTravels: {
+      where: { leftAt: null }, // Solo participantes activos
+      include: { user: { select: { id, firstName, lastName, email } } }
+    },
+    expenses: {
+      include: {
+        payer: { select: { id, firstName, lastName, email } },
+        participants: {
+          include: { user: { select: { id, firstName, lastName, email } } }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    }
+  }
+});
+```
+
+TRES PESTAÑAS PRINCIPALES:
+
+PESTAÑA GASTOS (?tab=expenses):
+- Formulario "Agregar Nuevo Gasto" (AddExpenseForm)
+- Lista de gastos existentes (ExpenseList)
+- Resumen de balances (BalanceSummary)
+
+PESTAÑA LIQUIDACIÓN (?tab=settlement):
+- Cálculos de deudas individuales
+- Sugerencias de pagos óptimos
+- Botón "Viaje Liquidado" (solo admins)
+- Estado de liquidación
+
+PESTAÑA PARTICIPANTES (?tab=participants):
+- Lista de participantes activos
+- Agregar nuevos participantes (solo admins)
+- Remover participantes sin historial (solo admins)
+
+CÁLCULO DE LIQUIDACIÓN:
+```
+const settlement = calculateTravelSettlement(expenseData, userData);
+```
+
+---
+
+9. SISTEMA DE LIQUIDACIÓN INTELIGENTE
+=====================================
+
+Archivo: src/lib/settlement.ts
+
+FUNCIÓN PRINCIPAL (NUESTRA):
+```
+export function calculateTravelSettlement(expenses, users) {
+  const balances = calculateBalances(expenses, users);
+  const settlements = calculateSettlements(balances);
+  
+  return {
+    balances,           // Balance individual de cada usuario
+    settlements,        // Transferencias sugeridas
+    totalExpenses,      // Total gastado en el viaje
+    isSettled          // Si todas las deudas están saldadas
+  };
+}
+```
+
+ALGORITMO DE BALANCES:
+```
+function calculateBalances(expenses, users) {
+  expenses.forEach(expense => {
+    // Sumar lo que pagó cada usuario
+    if (expense.payerId === userId) balance += expense.amount;
+    
+    // Restar lo que debe cada participante
+    const participation = expense.participants.find(p => p.userId === userId);
+    if (participation) balance -= participation.share;
+  });
+}
+```
+
+ALGORITMO DE LIQUIDACIÓN:
+- Separa usuarios con balance positivo (les deben) y negativo (deben)
+- Calcula transferencias mínimas para saldar todas las deudas
+- Optimiza el número de transacciones necesarias
+
+EJEMPLO DE RESULTADO:
+```
+balances: [
+  { userId: "user1", balance: 150000 },  // Le deben 150k
+  { userId: "user2", balance: -75000 },  // Debe 75k
+  { userId: "user3", balance: -75000 }   // Debe 75k
+]
+
+settlements: [
+  { from: "user2", to: "user1", amount: 75000 },
+  { from: "user3", to: "user1", amount: 75000 }
+]
+```
+
+---
+
+10. GESTIÓN DE PARTICIPANTES
+============================
+
+AGREGAR PARTICIPANTES:
+- Solo administradores pueden agregar
+- Busca usuario por email en la base de datos
+- Crea registro en UserTravel con rol 'member'
+- Validación: usuario no puede estar ya en el viaje
+
+REMOVER PARTICIPANTES:
+- Solo administradores pueden remover
+- RESTRICCIÓN: Solo se pueden remover usuarios SIN historial de gastos
+- Validación: hasExpenseHistory() verifica si participó en algún gasto
+- Si tiene historial → se muestra mensaje de error
+- Si no tiene historial → se puede remover sin problemas
+
+LÓGICA DE VALIDACIÓN:
+```
+function hasExpenseHistory(participantId, expenses) {
+  return expenses.some(expense =>
+    expense.payerId === participantId ||
+    expense.participants.some(p => p.userId === participantId)
+  );
+}
+```
+
+---
+
+11. LOGOUT
+==========
+
+Archivo: src/app/login/_actions/logout.ts
+
+SERVER ACTION (NUESTRA):
+```
+export async function logoutAction(_formData: FormData) {
+  await clearSessionCookie(); // Borra la cookie fb_session
+}
+```
+
+FLUJO COMPLETO:
+1. Usuario hace clic en botón "Cerrar Sesión" (form button)
+2. Se ejecuta logoutAction como server action
+3. clearSessionCookie() borra la cookie del navegador
+4. En la próxima navegación, middleware detecta ausencia de cookie
+5. Middleware redirige automáticamente a /login
+6. Usuario debe autenticarse nuevamente
+
+IMPLEMENTACIÓN EN DASHBOARD:
+```
+<form action={logoutAction}>
+  <button type="submit">Cerrar Sesión</button>
+</form>
+```
+
+---
+
+12. ESTRUCTURA DE BASE DE DATOS
+===============================
+
+MODELO USER:
+- id: Identificador único (CUID)
+- email: Email único del usuario
+- firebaseUid: UID de Firebase (único)
+- firstName, lastName: Nombres del usuario
+- phone: Teléfono opcional
+- Relaciones: userTravels[], paidExpenses[], expenseParticipations[]
+
+MODELO TRAVEL:
+- id: Identificador único
+- title: Título del viaje
+- description: Descripción opcional
+- isActive: Si el viaje está activo o finalizado
+- Relaciones: userTravels[], expenses[]
+
+MODELO USERTRAVEL (Tabla de unión):
+- userId, travelId: Claves foráneas
+- role: 'admin' o 'member'
+- joinedAt: Fecha de ingreso
+- leftAt: Fecha de salida (null si está activo)
+- exitBalance: Balance al momento de salir
+
+MODELO EXPENSE:
+- id: Identificador único
+- travelId: Viaje al que pertenece
+- payerId: Usuario que pagó
+- title: Título del gasto
+- amount: Monto total
+- category: Categoría opcional
+- Relaciones: travel, payer, participants[]
+
+MODELO EXPENSEPARTICIPANT:
+- expenseId, userId: Claves foráneas
+- share: Monto que debe pagar este participante
+- Restricción: Única combinación por gasto
+
+---
+
+===============================================================================
+                            DIAGRAMAS DE FLUJO
+===============================================================================
+
+FLUJO PRINCIPAL DE USUARIO:
+```
+Usuario → Landing (/) → ¿Tiene sesión? 
+                           ↓ No
+                    Login/Register → Firebase Auth → Server Action 
+                           ↓
+                    Cookie de sesión → Dashboard → Lista de viajes
+                           ↓
+                    Seleccionar viaje → Verificar acceso → Página de viaje
+                           ↓
+                    Pestañas: Gastos/Liquidación/Participantes
+                           ↓
+                    Interacciones → Server Actions → Base de datos
+```
+
+FLUJO DE AUTENTICACIÓN:
+```
+Formulario → Firebase Client → ID Token → Server Action → Firebase Admin
+                                              ↓
+                                        Verificar token → PostgreSQL
+                                              ↓
+                                        Cookie de sesión → Redirección
+```
+
+FLUJO DE MIDDLEWARE:
+```
+Request → ¿Ruta protegida? → ¿Tiene cookie? → ¿Cookie válida?
+             ↓ Sí              ↓ No            ↓ No
+         Continuar         Redirect login   Redirect login
+```
+
+FLUJO DE LIQUIDACIÓN:
+```
+Gastos → Calcular balances → Algoritmo de optimización → Sugerencias de pago
+           ↓
+    Balance individual → ¿Está liquidado? → Botón finalizar viaje
+```
+
+===============================================================================
+                                RESUMEN TÉCNICO
+===============================================================================
+
+FUNCIONES NUESTRAS:
+- Middleware personalizado con rate limiting y protección de rutas
+- Server Actions para todas las operaciones CRUD
+- Sistema de cookies de sesión seguras
+- Algoritmo de liquidación inteligente
+- Validaciones de acceso y permisos
+- Gestión de participantes con restricciones
+- Interfaz responsiva y optimizada
+
+FUNCIONES EXTERNAS:
+- Firebase Authentication (client y admin)
+- Prisma ORM para PostgreSQL
+- Next.js 14 con App Router
+- Tailwind CSS para estilos
+
+SEGURIDAD IMPLEMENTADA:
+- Cookies httpOnly, secure, sameSite
+- Verificación de tokens en cada request
+- Rate limiting por IP
+- Headers de seguridad (CSP, XSS, etc.)
+- Validación de permisos en server actions
+- Protección contra CSRF
+
+CARACTERÍSTICAS AVANZADAS:
+- Algoritmo de liquidación con optimización de transferencias
+- Gestión colaborativa con roles (admin/member)
+- Historial de gastos inmutable
+- Cálculo inteligente de deudas
+- Interfaz adaptativa móvil/desktop
+- Sistema de notificaciones con toasts
+
+===============================================================================

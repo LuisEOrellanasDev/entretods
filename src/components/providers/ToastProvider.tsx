@@ -9,9 +9,13 @@ export interface Toast {
   message: string;
 }
 
+export interface ToastOptions {
+  duration?: number;
+}
+
 interface ToastContextType {
   toasts: Toast[];
-  addToast: (toast: Omit<Toast, 'id'>) => void;
+  addToast: (toast: Omit<Toast, 'id'>, options?: ToastOptions) => void;
   removeToast: (id: string) => void;
 }
 
@@ -20,13 +24,15 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
+  const addToast = useCallback((toast: Omit<Toast, 'id'>, options: ToastOptions = {}) => {
     const id = crypto.randomUUID();
     setToasts(prev => [...prev, { ...toast, id }]);
 
-    // Auto-dismiss success, warning, and info toasts after 5 seconds
-    if (toast.type !== 'error') {
-      setTimeout(() => removeToast(id), 5000);
+    const duration = options.duration ||
+      (toast.type === 'error' ? 10000 : 5000);
+
+    if (toast.type !== 'error' || duration > 0) {
+      setTimeout(() => removeToast(id), duration);
     }
   }, []);
 

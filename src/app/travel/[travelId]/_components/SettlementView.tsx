@@ -6,6 +6,7 @@ import { UserBalance, Settlement } from '../../../../lib/settlement';
 import { formatCurrency } from '@/lib/utils/currency';
 import { useToast } from '@/components/providers/ToastProvider';
 import { liquidateTravel } from '../_actions/liquidateTravel';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface SettlementViewProps {
   balances: UserBalance[];
@@ -29,11 +30,10 @@ export default function SettlementView({
   const [isLiquidating, setIsLiquidating] = useState(false);
   const { addToast } = useToast();
   const router = useRouter();
+  const [showModal, setShowModal] = useState(false);
 
   const handleLiquidateTravel = async () => {
-    if (!confirm('¿Estás seguro de que quieres marcar este viaje como liquidado? Esta acción no se puede deshacer.')) {
-      return;
-    }
+    setShowModal(false);
 
     setIsLiquidating(true);
     try {
@@ -57,7 +57,6 @@ export default function SettlementView({
 
   return (
     <div className="space-y-6">
-      {/* Summary */}
       <div className="bg-blue-50 p-4 rounded-lg">
         <h3 className="text-lg font-semibold text-blue-900 mb-2">
           Resumen del Viaje
@@ -71,14 +70,13 @@ export default function SettlementView({
           </div>
           <div>
             <p className="text-sm text-blue-700">Estado</p>
-            <p className={`text-xl font-bold ${isSettled ? 'text-green-600' : 'text-orange-600'}`}>
-              {isSettled ? 'Liquidado' : 'Pendiente'}
+            <p className={`text-xl font-bold ${travelIsActive ? 'text-green-600' : 'text-orange-600'}`}>
+              {travelIsActive ? 'Activo' : 'Inactivo'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* User Balances */}
       <div className="bg-white border rounded-lg p-4">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Balance por Persona
@@ -105,7 +103,6 @@ export default function SettlementView({
           ))}
         </div>
 
-        {/* Legend */}
         <div className="mt-4 pt-4 border-t border-gray-200">
           <div className="flex flex-wrap gap-4 text-sm">
             <div className="flex items-center gap-2">
@@ -124,7 +121,6 @@ export default function SettlementView({
         </div>
       </div>
 
-      {/* Settlement Suggestions */}
       {settlements.length > 0 && (
         <div className="bg-white border rounded-lg p-4">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -169,7 +165,6 @@ export default function SettlementView({
         </div>
       )}
 
-      {/* All settled message */}
       {isSettled && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
@@ -188,7 +183,6 @@ export default function SettlementView({
         </div>
       )}
 
-      {/* Liquidate Travel Button */}
       {isAdmin && travelIsActive && (
         <div className="bg-white border rounded-lg p-4">
           <div className="flex items-center justify-between">
@@ -201,17 +195,23 @@ export default function SettlementView({
               </p>
             </div>
             <button
-              onClick={handleLiquidateTravel}
+              onClick={() => setShowModal(true)}
               disabled={isLiquidating}
               className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {isLiquidating ? 'Liquidando...' : 'Viaje Liquidado'}
             </button>
+            <ConfirmDialog
+              isOpen={showModal}
+              onClose={() => setShowModal(false)}
+              onConfirm={handleLiquidateTravel}
+              title="Confirmar Liquidación"
+              message="Al liquidar el viaje, se marcará como finalizado y no se podrá modificar. ¿Estás seguro de que quieres marcar este viaje como liquidado?."
+            />
           </div>
         </div>
       )}
 
-      {/* Travel already liquidated message */}
       {!travelIsActive && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div className="flex items-center gap-3">

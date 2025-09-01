@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useServerAction } from '@/lib/hooks/useServerAction'
 import { editExpense } from '../_actions/editExpense'
 import { Participant } from '@/types/participant'
 
@@ -37,46 +38,10 @@ export function EditExpenseForm({
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [splitType, setSplitType] = useState<'equal' | 'custom'>('custom')
   const [customShares, setCustomShares] = useState<Record<string, string>>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
-  // Initialize form with existing expense data
-  useEffect(() => {
-    const participantIds = expense.participants.map(p => p.userId)
-    setSelectedParticipants(participantIds)
-
-    const shares: Record<string, string> = {}
-    expense.participants.forEach(p => {
-      shares[p.userId] = p.share.toString()
-    })
-    setCustomShares(shares)
-
-    // Check if it's an equal split
-    const uniqueShares = [...new Set(expense.participants.map(p => p.share))]
-    if (uniqueShares.length === 1) {
-      setSplitType('equal')
-    } else {
-      setSplitType('custom')
-    }
-  }, [expense])
-
-  const handleParticipantToggle = (participantId: string) => {
-    setSelectedParticipants(prev => {
-      if (prev.includes(participantId)) {
-        return prev.filter(id => id !== participantId)
-      } else {
-        return [...prev, participantId]
-      }
-    })
-  }
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      const formData = new FormData(e.currentTarget)
+  const { execute: executeEditExpense, isPending, error } = useServerAction(
+    async (formData: FormData) => {
       const amount = parseFloat(formData.get('amount') as string)
 
       let participantShares: Record<string, number> = {}
@@ -104,12 +69,45 @@ export function EditExpenseForm({
       })
 
       onSuccess()
-
-    } catch (error) {
-      setError('Error al editar el gasto')
-    } finally {
-      setIsSubmitting(false)
+    },
+    {
+      successMessage: 'Gasto editado correctamente',
+      errorMessage: 'Error al editar el gasto'
     }
+  )
+
+  useEffect(() => {
+    const participantIds = expense.participants.map(p => p.userId)
+    setSelectedParticipants(participantIds)
+
+    const shares: Record<string, string> = {}
+    expense.participants.forEach(p => {
+      shares[p.userId] = p.share.toString()
+    })
+    setCustomShares(shares)
+
+    const uniqueShares = [...new Set(expense.participants.map(p => p.share))]
+    if (uniqueShares.length === 1) {
+      setSplitType('equal')
+    } else {
+      setSplitType('custom')
+    }
+  }, [expense])
+
+  const handleParticipantToggle = (participantId: string) => {
+    setSelectedParticipants(prev => {
+      if (prev.includes(participantId)) {
+        return prev.filter(id => id !== participantId)
+      } else {
+        return [...prev, participantId]
+      }
+    })
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    executeEditExpense(formData)
   }
 
   const totalCustomShares = selectedParticipants.reduce((sum, id) => {
@@ -122,7 +120,8 @@ export function EditExpenseForm({
         <h2 className="text-xl font-semibold">Editar Gasto</h2>
         <button
           onClick={onCancel}
-          className="text-gray-500 hover:text-gray-700"
+          disabled={isPending}
+          className="text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           ✕
         </button>
@@ -141,8 +140,9 @@ export function EditExpenseForm({
             id="title"
             name="title"
             required
+            disabled={isPending}
             defaultValue={expense.title}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             placeholder="Ej: Taxi al aeropuerto"
           />
         </div>
@@ -155,8 +155,9 @@ export function EditExpenseForm({
             id="description"
             name="description"
             rows={2}
+            disabled={isPending}
             defaultValue={expense.description || ''}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             placeholder="Detalles adicionales..."
           />
         </div>
@@ -170,10 +171,11 @@ export function EditExpenseForm({
             id="amount"
             name="amount"
             required
+            disabled={isPending}
             min="0"
             step="0.01"
             defaultValue={expense.amount}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             placeholder="0.00"
           />
         </div>
@@ -185,8 +187,9 @@ export function EditExpenseForm({
           <select
             id="category"
             name="category"
+            disabled={isPending}
             defaultValue={expense.category || ''}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           >
             <option value="">Seleccionar categoría</option>
             <option value="Transporte">Transporte</option>
@@ -206,8 +209,9 @@ export function EditExpenseForm({
             id="payerId"
             name="payerId"
             required
+            disabled={isPending}
             defaultValue={expense.payerId}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           >
             {participants.map((participant) => (
               <option key={participant.id} value={participant.id}>
@@ -228,7 +232,8 @@ export function EditExpenseForm({
                   type="checkbox"
                   checked={selectedParticipants.includes(participant.id)}
                   onChange={() => handleParticipantToggle(participant.id)}
-                  className="mr-2"
+                  disabled={isPending}
+                  className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                 />
                 <span className="text-sm">{participant.name}</span>
               </label>
@@ -247,7 +252,8 @@ export function EditExpenseForm({
                   type="radio"
                   checked={splitType === 'equal'}
                   onChange={() => setSplitType('equal')}
-                  className="mr-2"
+                  disabled={isPending}
+                  className="mr-2 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                 />
                 <span className="text-sm">División equitativa</span>
               </label>
@@ -256,7 +262,8 @@ export function EditExpenseForm({
                   type="radio"
                   checked={splitType === 'custom'}
                   onChange={() => setSplitType('custom')}
-                  className="mr-2"
+                  disabled={isPending}
+                  className="mr-2 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                 />
                 <span className="text-sm">Montos personalizados</span>
               </label>
@@ -281,12 +288,13 @@ export function EditExpenseForm({
                       type="number"
                       min="0"
                       step="0.01"
+                      disabled={isPending}
                       value={customShares[participantId] || ''}
                       onChange={(e) => setCustomShares(prev => ({
                         ...prev,
                         [participantId]: e.target.value
                       }))}
-                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm disabled:opacity-50"
                       placeholder="0.00"
                     />
                   </div>
@@ -303,16 +311,17 @@ export function EditExpenseForm({
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+            disabled={isPending}
+            className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || selectedParticipants.length === 0}
+            disabled={isPending || selectedParticipants.length === 0}
             className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+            {isPending ? 'Guardando...' : 'Guardar Cambios'}
           </button>
         </div>
       </form>

@@ -4,7 +4,6 @@ import { rateLimit, getClientIP } from './lib/utils/rateLimit';
 
 const COOKIE_NAME = process.env.FIREBASE_COOKIE_NAME || 'fb_session';
 
-// 👉 Función inline para construir el CSP
 function buildCSPHeader(nonce: string, isProd: boolean) {
   const scriptSrc = isProd
     ? `'self' 'nonce-${nonce}' 'strict-dynamic'`
@@ -31,18 +30,16 @@ function buildCSPHeader(nonce: string, isProd: boolean) {
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
-  // 🔐 Security headers
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
-  // 🔑 CSP con nonce dinámico
   const nonce = crypto.randomUUID();
   const isProd = process.env.NODE_ENV === 'production';
   response.headers.set(
-    'Content-Security-Policy-Report-Only', // 👈 cambia a "Content-Security-Policy" en prod final
+    'Content-Security-Policy-Report-Only',
     buildCSPHeader(nonce, isProd)
   );
 
@@ -52,7 +49,6 @@ export async function middleware(request: NextRequest) {
   const protectedRoutes = ['/dashboard', '/travel', '/create-travel'];
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
-  // 🔄 Root path
   if (pathname === '/') {
     const token = request.cookies.get(COOKIE_NAME)?.value;
     if (token) {
@@ -60,7 +56,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // � Redirect legacy /auth/* to new routes
   if (pathname.startsWith('/auth/login')) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
@@ -68,7 +63,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/register', request.url));
   }
 
-  // �🔒 Protected routes
   if (isProtectedRoute) {
     const token = request.cookies.get(COOKIE_NAME)?.value;
     if (!token) {
@@ -76,12 +70,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ⏳ Rate limiting para login/register
   if (
     pathname === '/login' ||
     pathname === '/register'
   ) {
-    const rateLimitResult = await rateLimit(`auth:${clientIP}`, 10, 60000);
+    const rateLimitResult = await rateLimit(`auth:${clientIP}`, 50, 60000);
     if (!rateLimitResult.success) {
       return new Response(
         JSON.stringify({
@@ -99,9 +92,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ⏳ Rate limiting para acciones
   if (pathname.includes('/_actions/')) {
-    const rateLimitResult = await rateLimit(`actions:${clientIP}`, 30, 60000);
+    const rateLimitResult = await rateLimit(`actions:${clientIP}`, 100, 60000);
     if (!rateLimitResult.success) {
       return new Response(
         JSON.stringify({

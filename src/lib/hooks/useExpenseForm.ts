@@ -1,10 +1,9 @@
 import { useState, useCallback } from 'react';
 import { formatCurrency, isValidAmount } from '@/lib/utils/currency';
 
-interface User {
+interface Participant {
   id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
 }
 
@@ -17,7 +16,7 @@ interface ExpenseFormData {
 }
 
 interface UseExpenseFormOptions {
-  participants: User[];
+  participants: Participant[];
   currentUserId: string;
   initialData?: Partial<ExpenseFormData>;
 }
@@ -127,7 +126,7 @@ export function useExpenseForm({ participants, currentUserId, initialData }: Use
 
       return {
         participantId,
-        participantName: participant ? `${participant.firstName} ${participant.lastName}` : 'Unknown',
+        participantName: participant ? participant.name : 'Unknown',
         share,
         formattedShare: formatCurrency(share)
       };

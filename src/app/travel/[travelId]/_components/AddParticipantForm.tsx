@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useServerAction } from '@/lib/hooks/useServerAction';
 import { LoadingButton } from '@/components/ui/LoadingButton';
 import { addParticipant } from '../_actions/addParticipant';
+import { useToast } from '@/components/providers/ToastProvider';
 
 interface AddParticipantFormProps {
   travelId: string;
@@ -14,7 +15,7 @@ export function AddParticipantForm({ travelId }: AddParticipantFormProps) {
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<{ email?: string }>({});
   const router = useRouter();
-
+  const { addToast } = useToast();
   const { execute: handleAddParticipant, isPending } = useServerAction(
     addParticipant,
     {
@@ -22,11 +23,16 @@ export function AddParticipantForm({ travelId }: AddParticipantFormProps) {
         setEmail('');
         setErrors({});
         router.refresh();
+        addToast({
+          type: 'success',
+          title: 'Participante agregado correctamente',
+          message: 'Participante agregado correctamente'
+        });
       },
       onError: (error: Error) => {
         setErrors({ email: error.message });
       },
-      errorMessage: '' // Disable toast error to show only inline error
+      errorMessage: ''
     }
   );
 

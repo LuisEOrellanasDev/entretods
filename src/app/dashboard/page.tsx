@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { logoutAction } from '@/app/login/_actions/logout'
+import { getUserBalanceFromTravel } from '@/lib/balance-utils'
+import { formatCurrency } from '@/lib/utils/currency'
 
 export default async function Dashboard() {
   const session = await auth()
@@ -10,9 +12,11 @@ export default async function Dashboard() {
   if (!session?.user?.id) {
     redirect('/login')
   }
+
   const userTravels = await prisma.userTravel.findMany({
     where: {
-      userId: session.user.id
+      userId: session.user.id,
+      leftAt: null
     },
     include: {
       travel: {
@@ -21,6 +25,23 @@ export default async function Dashboard() {
             select: {
               expenses: true,
               userTravels: true
+            }
+          },
+          expenses: {
+            include: {
+              payer: true,
+              participants: true
+            }
+          },
+          userTravels: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                }
+              }
             }
           }
         }
@@ -32,6 +53,38 @@ export default async function Dashboard() {
       }
     }
   })
+
+  const travelsWithBalances = await Promise.all(
+    userTravels.map(async (userTravel) => {
+      const travel = userTravel.travel;
+
+      const expenseData = travel.expenses.map((expense: any) => ({
+        id: expense.id,
+        amount: Number(expense.amount),
+        payerId: expense.payer.id,
+        participants: expense.participants.map((p: any) => ({
+          userId: p.userId,
+          share: Number(p.share)
+        })),
+      }));
+
+      const userData = travel.userTravels.map((p: any) => ({
+        id: p.user.id,
+        firstName: p.user.firstName,
+        lastName: p.user.lastName,
+      }));
+
+      const userBalance = getUserBalanceFromTravel(
+        { expenses: expenseData, users: userData },
+        session.user.id
+      );
+
+      return {
+        ...userTravel,
+        userBalance: userBalance
+      };
+    })
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -64,7 +117,7 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      {userTravels.length === 0 ? (
+      {travelsWithBalances.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <div className="text-gray-500">
             <p className="text-lg mb-2">No tienes viajes aún</p>
@@ -73,19 +126,20 @@ export default async function Dashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {userTravels.map((userTravel) => {
+          {travelsWithBalances.map((userTravel) => {
             const travel = userTravel.travel
             const isActive = travel.isActive
             const expenseCount = travel._count.expenses
             const participantCount = travel._count.userTravels
+            const userBalance = userTravel.userBalance
 
             return (
               <Link
                 key={travel.id}
                 href={`/travel/${travel.id}`}
                 className={`block rounded-lg shadow hover:shadow-md transition-all ${isActive
-                    ? 'bg-white'
-                    : 'bg-gray-100 opacity-75 hover:opacity-90'
+                  ? 'bg-white'
+                  : 'bg-gray-100 opacity-75 hover:opacity-90'
                   }`}
               >
                 <div className="p-6">
@@ -114,6 +168,16 @@ export default async function Dashboard() {
                     <div className="flex justify-between">
                       <span>{participantCount} participantes</span>
                       <span>{expenseCount} gastos</span>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <span>Saldo:</span>
+                      <span className={`font-medium ${userBalance > 0.01 ? 'text-blue-600' :
+                        userBalance < -0.01 ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                        {userBalance > 0.01 ? `le deben ${formatCurrency(userBalance)}` :
+                          userBalance < -0.01 ? `Debe  ${formatCurrency(userBalance)}` : '✓ Al día'}
+                      </span>
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-gray-200">

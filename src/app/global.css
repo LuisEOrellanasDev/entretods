@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
 
-/* Custom animations for tab transitions */
 @keyframes fadeIn {
   from {
     opacity: 0;

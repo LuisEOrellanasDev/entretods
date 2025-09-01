@@ -15,7 +15,6 @@ interface AddExpenseParams {
 }
 
 export async function addExpense(params: AddExpenseParams) {
-  // Autenticación centralizada
   const session = await requireAuth()
 
   const { travelId, payerId, title, description, amount, category, participantShares } = params

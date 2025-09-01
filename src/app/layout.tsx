@@ -1,4 +1,3 @@
-// app/layout.tsx
 import type { Metadata } from "next"
 import "./global.css"
 import { ToastProvider } from "@/components/providers/ToastProvider"

@@ -1,13 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-
 import { auth } from '@/lib/firebase/client';
-
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-
 import { registerWithFirebaseAction } from '@/app/register/_actions/register';
-
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 

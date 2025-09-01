@@ -20,16 +20,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // 1) Sign-in with Firebase
       const cred = await signInWithEmailAndPassword(auth, email, password);
 
-      // 2) Get fresh ID token
       const idToken = await cred.user.getIdToken();
 
-      // 3) Ask server to create session cookie and ensure DB user exists
       await createSessionAction(idToken);
 
-      // 4) Go to dashboard
       router.replace('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');

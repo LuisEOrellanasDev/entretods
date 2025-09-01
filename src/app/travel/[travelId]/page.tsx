@@ -2,12 +2,12 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { ExpenseList } from './_components/ExpenseList';
-import { AddExpenseForm } from './_components/AddExpenseForm';
 import SettlementView from './_components/SettlementView';
 import { ParticipantManagement } from './_components/ParticipantManagement';
 import { BalanceSummary } from './_components/BalanceSummary';
 import { BackButton } from '@/components/ui/BackButton';
 import { calculateTravelSettlement } from '@/lib/settlement';
+import AppExpenseButton from './_components/AppExpenseButton';
 
 interface TravelPageProps {
   params: Promise<{ travelId: string }>;
@@ -23,7 +23,6 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
     redirect('/login');
   }
 
-  // Check if user has access to this travel
   const userTravel = await prisma.userTravel.findFirst({
     where: {
       travelId,
@@ -35,13 +34,12 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
     redirect('/dashboard');
   }
 
-  // Fetch travel with participants and expenses
   const travel = await prisma.travel.findUnique({
     where: { id: travelId },
     include: {
       userTravels: {
         where: {
-          leftAt: null, // Only active participants
+          leftAt: null,
         },
         include: {
           user: {
@@ -88,7 +86,6 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
     redirect('/dashboard');
   }
 
-  // Get all participants (including those who left) for participant management
   const allParticipants = await prisma.userTravel.findMany({
     where: { travelId },
     include: {
@@ -103,7 +100,6 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
     },
   });
 
-  // Transform data for settlement calculation
   const expenseData = travel.expenses.map(expense => ({
     id: expense.id,
     amount: Number(expense.amount),
@@ -120,13 +116,10 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
     lastName: p.user.lastName,
   }));
 
-  // Calculate settlement
   const settlement = calculateTravelSettlement(expenseData, userData);
 
-  // Check if current user is admin
   const isAdmin = userTravel.role === 'admin';
 
-  // Transform participants for components
   const participantsForComponents = travel.userTravels.map(p => ({
     id: p.user.id,
     name: `${p.user.firstName} ${p.user.lastName}`,
@@ -148,7 +141,6 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header with Back Button */}
         <div className="mb-4 sm:mb-6">
           <BackButton
             href="/dashboard"
@@ -157,7 +149,6 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
           />
         </div>
 
-        {/* Travel Info Header */}
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
             {travel.title}
@@ -174,7 +165,6 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
           </div>
         </div>
 
-        {/* Navigation Tabs - Mobile Optimized */}
         <div className="mb-4 sm:mb-6">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex overflow-x-auto scrollbar-hide">
@@ -209,7 +199,6 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
           </div>
         </div>
 
-        {/* Tab Content */}
         <div className="space-y-6 sm:space-y-8">
           {tab === 'expenses' && (
             <div className="space-y-6">
@@ -222,11 +211,14 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
                     <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">
                       Agregar Nuevo Gasto
                     </h3>
-                    <AddExpenseForm
-                      travelId={travelId}
-                      participants={participantsForComponents}
-                      currentUserId={session.user.id}
-                    />
+                    {travel.isActive && (
+                      <AppExpenseButton
+                        travelId={travelId}
+                        participantsForComponents={participantsForComponents}
+                        session={session}
+                      />
+                    )}
+
                   </div>
                   <div className="order-1 xl:order-2">
                     <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">
@@ -244,11 +236,11 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
                       travelId={travelId}
                       participants={participantsForComponents}
                       currentUserId={session.user.id}
+                      travelIsActive={travel.isActive}
                     />
                   </div>
                 </div>
               </div>
-              {/* Balance Summary */}
               <BalanceSummary balances={settlement.balances} />
             </div>
           )}
