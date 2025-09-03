@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireAuth, requireTravelAccess } from '@/lib/auth/utils'
+import { requireAuth, requireTravelAccess } from '@/lib/auth/travelAuthPermisions'
 import { prisma } from '@/lib/prisma'
 
 export async function deleteExpense(expenseId: string, travelId: string) {

@@ -7,9 +7,9 @@ import { useExpenseForm } from '@/lib/hooks/useExpenseForm'
 import { formatCurrency } from '@/lib/utils/currency'
 import { addExpense } from '../_actions/addExpense'
 import { AddExpenseFormProps } from '@/types/participant'
+import { NumericFormat } from 'react-number-format'
 
 export function AddExpenseForm({ travelId, participants, currentUserId, onSuccess }: AddExpenseFormProps) {
-
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
   const {
@@ -21,10 +21,13 @@ export function AddExpenseForm({ travelId, participants, currentUserId, onSucces
     handleInputChange,
     handleParticipantToggle,
     handleCustomShareChange,
+    handleToggleAllParticipants,
+    allParticipantsSelected,
     setSplitType,
     validateForm,
     resetForm,
-    isFormValid
+    isFormValid,
+    getCustomSharesValidation
   } = useExpenseForm({
     participants,
     currentUserId
@@ -64,6 +67,7 @@ export function AddExpenseForm({ travelId, participants, currentUserId, onSucces
     executeAddExpense()
     onSuccess()
   }
+
 
   return (
     <div className="bg-white rounded-lg shadow p-4 sm:p-6">
@@ -112,12 +116,22 @@ export function AddExpenseForm({ travelId, participants, currentUserId, onSucces
             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
               Monto
             </label>
-            <input
-              type="text"
+            <NumericFormat
               id="amount"
               name="amount"
               value={formData.amount}
-              onChange={handleInputChange}
+              thousandSeparator='.'
+              decimalSeparator=','
+              prefix="$"
+              allowNegative={false}
+              onValueChange={(values) => {
+                handleInputChange({
+                  target: {
+                    name: 'amount',
+                    value: values.value
+                  }
+                } as React.ChangeEvent<HTMLInputElement>)
+              }}
               required
               disabled={isPending}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm sm:text-base"
@@ -173,7 +187,16 @@ export function AddExpenseForm({ travelId, participants, currentUserId, onSucces
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Participantes *
           </label>
+
           <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-200 rounded-md p-3">
+            <label className="flex items-center space-x-3 cursor-pointer">
+              <input type="checkbox"
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50 h-4 w-4"
+                checked={allParticipantsSelected}
+                onChange={handleToggleAllParticipants}
+                disabled={isPending}
+              /> seleccionar todos
+            </label>
             {participants.map(participant => (
               <label key={participant.id} className="flex items-center space-x-3 cursor-pointer">
                 <input
@@ -240,18 +263,41 @@ export function AddExpenseForm({ travelId, participants, currentUserId, onSucces
                     <span className="text-sm text-gray-700 flex-1 min-w-0 truncate">
                       {participant.name}
                     </span>
-                    <input
-                      type="text"
+                    <NumericFormat
                       value={participantShares[participantId] || ''}
-                      onChange={(e) => handleCustomShareChange(participantId, e.target.value)}
+                      onValueChange={(values) => handleCustomShareChange(participantId, values.value)}
                       disabled={isPending}
                       className="w-20 sm:w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                       placeholder="0"
+                      thousandSeparator="."
+                      decimalSeparator=","
+                      prefix="$"
                     />
                   </div>
                 )
               })}
             </div>
+
+            {(() => {
+              const validation = getCustomSharesValidation();
+              if (!validation.isValid && formData.amount) {
+                return (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-red-800">{validation.message}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
         )}
 

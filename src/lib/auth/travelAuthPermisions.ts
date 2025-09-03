@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
+import { UserRole } from '../../../generated/prisma';
 
 export async function requireAuth() {
   const session = await auth();
@@ -43,7 +44,7 @@ export async function requireTravelAdmin(userId: string, travelId: string) {
     throw new Error('No tienes acceso a este viaje');
   }
 
-  if (userTravel.role !== 'admin') {
+  if (userTravel.role !== UserRole.ADMIN) {
     throw new Error('Solo los administradores pueden realizar esta acción');
   }
 

@@ -61,6 +61,16 @@ export function useExpenseForm({ participants, currentUserId, initialData }: Use
     }));
   }, []);
 
+  const handleToggleAllParticipants = useCallback(() => {
+    if (selectedParticipants.size === participants.length) {
+      setSelectedParticipants(new Set());
+    } else {
+      setSelectedParticipants(new Set(participants.map(p => p.id)));
+    }
+  }, [participants, selectedParticipants.size]);
+
+  const allParticipantsSelected = participants.length > 0 && selectedParticipants.size === participants.length;
+
   const calculateShares = useCallback((): Record<string, number> => {
     const amount = parseFloat(formData.amount) || 0;
     const selectedIds = Array.from(selectedParticipants);
@@ -75,6 +85,35 @@ export function useExpenseForm({ participants, currentUserId, initialData }: Use
 
     return participantShares;
   }, [formData.amount, selectedParticipants, splitType, participantShares]);
+
+  const getCustomSharesValidation = useCallback(() => {
+    if (splitType !== 'custom') return { isValid: true, difference: 0, message: '' };
+
+    const totalAmount = parseFloat(formData.amount) || 0;
+    if (totalAmount <= 0) return { isValid: true, difference: 0, message: '' };
+
+    const shares = calculateShares();
+    const totalShares = Object.values(shares).reduce((sum, share) => sum + share, 0);
+    const difference = totalAmount - totalShares;
+
+    if (Math.abs(difference) < 0.01) {
+      return { isValid: true, difference: 0, message: '' };
+    }
+
+    if (difference > 0) {
+      return {
+        isValid: false,
+        difference,
+        message: `Los montos ingresados no llegan al valor total del gasto, faltan ${formatCurrency(difference)}`
+      };
+    } else {
+      return {
+        isValid: false,
+        difference: Math.abs(difference),
+        message: `El monto excede el valor del gasto por ${formatCurrency(Math.abs(difference))}`
+      };
+    }
+  }, [splitType, formData.amount, calculateShares]);
 
   const validateForm = useCallback((): string[] => {
     const errors: string[] = [];
@@ -92,7 +131,6 @@ export function useExpenseForm({ participants, currentUserId, initialData }: Use
       errors.push('Debe seleccionar al menos un participante');
     }
 
-    // Only validate shares if amount is valid
     if (isValidAmount(amount)) {
       const shares = calculateShares();
       const totalShares = Object.values(shares).reduce((sum, share) => sum + share, 0);
@@ -102,8 +140,13 @@ export function useExpenseForm({ participants, currentUserId, initialData }: Use
       }
     }
 
+    const customSharesValidation = getCustomSharesValidation();
+    if (!customSharesValidation.isValid) {
+      errors.push(customSharesValidation.message);
+    }
+
     return errors;
-  }, [formData, selectedParticipants, calculateShares]);
+  }, [formData, selectedParticipants, calculateShares, getCustomSharesValidation]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -137,29 +180,24 @@ export function useExpenseForm({ participants, currentUserId, initialData }: Use
   const totalAmount = Object.values(shares).reduce((sum: number, share: number) => sum + share, 0);
 
   return {
-    // Form data
     formData,
     splitType,
     participantShares,
     selectedParticipants,
 
-    // Calculated values
     shares,
     totalAmount,
-
-    // Handlers
+    allParticipantsSelected,
     handleInputChange,
     handleParticipantToggle,
     handleCustomShareChange,
+    handleToggleAllParticipants,
     setSplitType,
-
-    // Utilities
     validateForm,
     resetForm,
     getFormattedSummary,
-
-    // Validation helpers
     isFormValid: () => validateForm().length === 0,
     getValidationErrors: validateForm,
+    getCustomSharesValidation,
   };
 }

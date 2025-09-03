@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAuth, requireTravelAdmin } from '@/lib/auth/utils'
+import { requireAuth, requireTravelAdmin } from '@/lib/auth/travelAuthPermisions'
 import { revalidatePath } from 'next/cache'
 import { sanitizeErrorMessage } from '@/lib/utils/errors'
 import { calculateTravelSettlement } from '@/lib/settlement'

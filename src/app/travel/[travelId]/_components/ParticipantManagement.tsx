@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { AddParticipantForm } from './AddParticipantForm';
-import { getUserInitials } from '@/lib/utils/user';
 import { Participant } from '@/types/participant';
 import ParticipantList from './ParticipantList';
 

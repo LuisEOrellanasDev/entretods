@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireAuth, requireTravelAccess, validateTravelParticipant, validateExpenseParticipants } from '@/lib/auth/utils'
+import { requireAuth, requireTravelAccess, validateTravelParticipant, validateExpenseParticipants } from '@/lib/auth/travelAuthPermisions'
 import { prisma } from '@/lib/prisma'
 
 interface AddExpenseParams {

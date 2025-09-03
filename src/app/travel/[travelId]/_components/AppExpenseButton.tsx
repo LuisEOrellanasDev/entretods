@@ -1,5 +1,5 @@
 'use client'
-import { useModal } from "@/hooks/useModal";
+import { useModal } from "@/lib/hooks/useModal";
 import { Modal } from "@/components/ui/Modal";
 import { AddExpenseForm } from "./AddExpenseForm";
 
@@ -10,7 +10,7 @@ export default function AppExpenseButton({ travelId, participantsForComponents, 
     <>
 
       <button onClick={modal.open} className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">Agregar Gasto</button>
-      <Modal isOpen={modal.isOpen} onClose={modal.close} title="Agregar Gasto">
+      <Modal size="md" isOpen={modal.isOpen} onClose={modal.close} title="Agregar Gasto">
         <AddExpenseForm
           travelId={travelId}
           participants={participantsForComponents}

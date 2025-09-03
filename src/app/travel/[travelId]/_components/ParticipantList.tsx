@@ -4,6 +4,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { removeParticipant } from '../_actions/removeParticipant';
 import { useState } from 'react';
 import { useToast } from '@/components/providers/ToastProvider';
+import { UserRole } from '../../../../../generated/prisma'
 
 export default function ParticipantList({ participants, currentUserId, travelId }: {
   participants: Participant[];
@@ -60,7 +61,7 @@ export default function ParticipantList({ participants, currentUserId, travelId 
             }`}
         >
           <div className="flex items-center space-x-3">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${participant.role === 'admin'
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${participant.role === UserRole.ADMIN
               ? 'bg-purple-100 text-purple-700'
               : 'bg-gray-100 text-gray-700'
               }`}>
@@ -77,11 +78,11 @@ export default function ParticipantList({ participants, currentUserId, travelId 
             </div>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
-            <span className={`px-2 py-1 text-xs font-medium rounded-full self-start sm:self-auto ${participant.role === 'admin'
+            <span className={`px-2 py-1 text-xs font-medium rounded-full self-start sm:self-auto ${participant.role === UserRole.ADMIN
               ? 'bg-purple-100 text-purple-700'
               : 'bg-gray-100 text-gray-700'
               }`}>
-              {participant.role === 'admin' ? 'Admin' : 'Miembro'}
+              {participant.role === UserRole.ADMIN ? 'Admin' : 'Miembro'}
             </span>
             <span className="text-xs text-gray-500">
               Desde {participant.joinedAt.toLocaleDateString('es-CO')}

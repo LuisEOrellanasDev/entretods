@@ -29,8 +29,8 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={handleBackdropClick}>
 
       <div className="relative w-full max-w-lg">
-        <div className="relative bg-white rounded-lg shadow-lg">
-          <div className="p-6 relative">
+        <div className="relative bg-white rounded-lg shadow-lg max-h-[calc(100vh-4rem)]">
+          <div className="p-6 relative max-h-[calc(100vh-8rem)] overflow-y-auto">
             <h2 className="text-lg font-semibold mb-4">{title}</h2>
             <button onClick={onClose} className="absolute top-2 right-2 text-gray-600 hover:text-gray-800">
               <p className="text-lg p-2">❌</p>

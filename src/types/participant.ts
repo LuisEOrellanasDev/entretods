@@ -1,14 +1,16 @@
+import { UserRole } from "../../generated/prisma";
+
 export interface Participant {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'member';
+  role: UserRole;
   joinedAt: Date;
   leftAt?: Date | null;
 }
 
 export interface ParticipantWithRole extends Participant {
-  role: 'admin' | 'member';
+  role: UserRole;
 }
 
 export interface ExpenseParticipant {

@@ -1,9 +1,10 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-import { requireAuth, requireTravelAdmin } from '@/lib/auth/utils'
+import { requireAuth, requireTravelAdmin } from '@/lib/auth/travelAuthPermisions'
 import { revalidatePath } from 'next/cache'
 import { sanitizeErrorMessage } from '@/lib/utils/errors'
+import { UserRole } from '../../../../../generated/prisma'
 
 interface AddParticipantData {
   travelId: string
@@ -54,7 +55,7 @@ export async function addParticipant(data: AddParticipantData) {
         data: {
           userId: user.id,
           travelId: data.travelId,
-          role: 'member',
+          role: UserRole.MEMBER,
           joinedAt: new Date()
         }
       })

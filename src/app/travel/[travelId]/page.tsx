@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { ExpenseList } from './_components/ExpenseList';
 import SettlementView from './_components/SettlementView';
@@ -8,6 +8,7 @@ import { BalanceSummary } from './_components/BalanceSummary';
 import { BackButton } from '@/components/ui/BackButton';
 import { calculateTravelSettlement } from '@/lib/settlement';
 import AppExpenseButton from './_components/AppExpenseButton';
+import { UserRole, TravelStatus } from '../../../../generated/prisma';
 
 interface TravelPageProps {
   params: Promise<{ travelId: string }>;
@@ -118,13 +119,13 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
 
   const settlement = calculateTravelSettlement(expenseData, userData);
 
-  const isAdmin = userTravel.role === 'admin';
+  const isAdmin = userTravel.role === UserRole.ADMIN;
 
   const participantsForComponents = travel.userTravels.map(p => ({
     id: p.user.id,
     name: `${p.user.firstName} ${p.user.lastName}`,
     email: p.user.email || '',
-    role: p.role as 'admin' | 'member',
+    role: p.role as UserRole,
     joinedAt: p.joinedAt,
     leftAt: p.leftAt
   }))
@@ -133,7 +134,7 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
     id: p.user.id,
     name: `${p.user.firstName} ${p.user.lastName}`,
     email: p.user.email || '',
-    role: p.role as 'admin' | 'member',
+    role: p.role as UserRole,
     joinedAt: p.joinedAt,
     leftAt: p.leftAt,
   }));
@@ -211,7 +212,7 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
                     <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">
                       Agregar Nuevo Gasto
                     </h3>
-                    {travel.isActive && (
+                    {travel.status === TravelStatus.ACTIVE && (
                       <AppExpenseButton
                         travelId={travelId}
                         participantsForComponents={participantsForComponents}
@@ -236,7 +237,7 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
                       travelId={travelId}
                       participants={participantsForComponents}
                       currentUserId={session.user.id}
-                      travelIsActive={travel.isActive}
+                      travelIsActive={travel.status === TravelStatus.ACTIVE}
                     />
                   </div>
                 </div>
@@ -256,8 +257,8 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
                 totalExpenses={settlement.totalExpenses}
                 isSettled={settlement.isSettled}
                 travelId={travelId}
-                isAdmin={userTravel.role === 'admin'}
-                travelIsActive={travel.isActive}
+                isAdmin={userTravel.role === UserRole.ADMIN}
+                travelIsActive={travel.status === TravelStatus.ACTIVE}
               />
             </div>
           )}
@@ -271,7 +272,7 @@ export default async function TravelPage({ params, searchParams }: TravelPagePro
                 travelId={travelId}
                 participants={participantsForManagement}
                 currentUserId={session.user.id}
-                isAdmin={isAdmin}
+                isAdmin={userTravel.role === UserRole.ADMIN}
                 expenses={expenseData}
               />
             </div>

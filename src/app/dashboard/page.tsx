@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/auth/auth'
 import { logoutAction } from '@/app/login/_actions/logout'
-import { getUserBalanceFromTravel } from '@/lib/balance-utils'
+import { getUserBalanceFromTravel } from '@/lib/utils/balance-utils'
 import { formatCurrency } from '@/lib/utils/currency'
+import { UserRole, TravelStatus } from '../../../generated/prisma'
 
 export default async function Dashboard() {
   const session = await auth()
@@ -128,7 +129,7 @@ export default async function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {travelsWithBalances.map((userTravel) => {
             const travel = userTravel.travel
-            const isActive = travel.isActive
+            const isActive = travel.status === TravelStatus.ACTIVE
             const expenseCount = travel._count.expenses
             const participantCount = travel._count.userTravels
             const userBalance = userTravel.userBalance
@@ -183,7 +184,7 @@ export default async function Dashboard() {
                     <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                       <span className={`text-xs ${isActive ? 'text-gray-400' : 'text-gray-400'
                         }`}>
-                        {userTravel.role === 'admin' ? 'Administrador' : 'Miembro'}
+                        {userTravel.role === UserRole.ADMIN ? 'Administrador' : 'Miembro'}
                       </span>
                       <span className={`text-sm font-medium ${isActive ? 'text-blue-600' : 'text-gray-500'
                         }`}>

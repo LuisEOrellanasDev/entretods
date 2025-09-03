@@ -135,7 +135,7 @@ exports.Prisma.TravelScalarFieldEnum = {
   id: 'id',
   title: 'title',
   description: 'description',
-  isActive: 'isActive',
+  status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -183,7 +183,15 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
+exports.TravelStatus = exports.$Enums.TravelStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE'
+};
 
+exports.UserRole = exports.$Enums.UserRole = {
+  ADMIN: 'ADMIN',
+  MEMBER: 'MEMBER'
+};
 
 exports.Prisma.ModelName = {
   User: 'User',
