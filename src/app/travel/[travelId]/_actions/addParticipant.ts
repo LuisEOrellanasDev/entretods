@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { requireAuth, requireTravelAdmin } from '@/lib/auth/travelAuthPermisions'
 import { revalidatePath } from 'next/cache'
 import { sanitizeErrorMessage } from '@/lib/utils/errors'
-import { UserRole } from '../../../../../generated/prisma'
+import { UserRole } from '@/generated/prisma'
 
 interface AddParticipantData {
   travelId: string

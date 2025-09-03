@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/auth/auth'
 import CreateTravelForm from './_components/CreateTravelForm'
 
 export default async function CreateTravelPage() {

@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../../lib/prisma'
 import Link from 'next/link'
-import { auth } from '@/lib/auth/auth'
-import { logoutAction } from '@/app/login/_actions/logout'
-import { getUserBalanceFromTravel } from '@/lib/utils/balance-utils'
-import { formatCurrency } from '@/lib/utils/currency'
-import { UserRole, TravelStatus } from '../../../generated/prisma'
+import { auth } from '../../lib/auth/auth'
+import { logoutAction } from '../../app/login/_actions/logout'
+import { getUserBalanceFromTravel } from '../../lib/utils/balance-utils'
+import { formatCurrency } from '../../lib/utils/currency'
+import { UserRole, TravelStatus } from '@/generated/prisma'
 
 export default async function Dashboard() {
   const session = await auth()

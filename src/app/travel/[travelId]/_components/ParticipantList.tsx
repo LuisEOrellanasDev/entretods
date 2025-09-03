@@ -4,7 +4,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { removeParticipant } from '../_actions/removeParticipant';
 import { useState } from 'react';
 import { useToast } from '@/components/providers/ToastProvider';
-import { UserRole } from '../../../../../generated/prisma'
+import { UserRole } from '@/generated/prisma'
 
 export default function ParticipantList({ participants, currentUserId, travelId }: {
   participants: Participant[];

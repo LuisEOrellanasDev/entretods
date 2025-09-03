@@ -1,4 +1,4 @@
-import { calculateTravelSettlement } from './settlement';
+import { calculateTravelSettlement } from '../settlement';
 
 export interface TravelBalanceData {
   expenses: Array<{

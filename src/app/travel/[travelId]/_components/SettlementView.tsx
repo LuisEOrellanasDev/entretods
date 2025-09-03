@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserBalance, Settlement } from '../../../../lib/settlement';
+import { UserBalance, Settlement } from '@/lib/settlement';
 import { formatCurrency } from '@/lib/utils/currency';
 import { useToast } from '@/components/providers/ToastProvider';
 import { liquidateTravel } from '../_actions/liquidateTravel';

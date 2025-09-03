@@ -1,9 +1,9 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { adminAuth } from '../../../lib/firebase/admin';
-import { createSessionCookieFromIdToken } from '../../../lib/firebase/firebaseSesion';
-import { prisma } from '../../../lib/prisma';
+import { adminAuth } from '@/lib/firebase/admin';
+import { createSessionCookieFromIdToken } from '@/lib/firebase/firebaseSesion';
+import { prisma } from '@/lib/prisma';
 
 export async function createSessionAction(idToken: string) {
   const decoded = await adminAuth.verifyIdToken(idToken);

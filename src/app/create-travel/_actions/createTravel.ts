@@ -1,8 +1,9 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/auth/auth'
 import { prisma } from '@/lib/prisma'
+import { UserRole } from '@/generated/prisma'
 
 interface CreateTravelData {
   title: string;
@@ -40,7 +41,7 @@ export async function createTravel(formData: FormData) {
         userTravels: {
           create: {
             userId: session.user.id,
-            role: 'admin',
+            role: UserRole.ADMIN,
           },
         },
       },
@@ -59,7 +60,7 @@ export async function createTravel(formData: FormData) {
             data: {
               userId: existingUser.id,
               travelId: travel.id,
-              role: 'member',
+              role: UserRole.MEMBER,
             },
           })
         } else {
@@ -67,7 +68,8 @@ export async function createTravel(formData: FormData) {
       }
     }
   } catch (error) {
-    throw new Error('Error al crear el viaje')
+    console.error('Error creating travel:', error)
+    throw new Error(`Error al crear el viaje: ${error instanceof Error ? error.message : 'Error desconocido'}`)
   }
 
   redirect(`/travel/${travelId}`)

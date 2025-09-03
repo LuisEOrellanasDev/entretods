@@ -1,10 +1,10 @@
 'use server';
 
-import { prisma } from '../../../lib/prisma';
+import { prisma } from '@/lib/prisma';
 
-import { adminAuth } from '../../../lib/firebase/admin';
+import { adminAuth } from '@/lib/firebase/admin';
 
-import { createSessionCookieFromIdToken } from '../../../lib/firebase/firebaseSesion';
+import { createSessionCookieFromIdToken } from '@/lib/firebase/firebaseSesion';
 
 type SyncUserInput = {
   idToken: string;

@@ -8,7 +8,7 @@ import { BalanceSummary } from './_components/BalanceSummary';
 import { BackButton } from '@/components/ui/BackButton';
 import { calculateTravelSettlement } from '@/lib/settlement';
 import AppExpenseButton from './_components/AppExpenseButton';
-import { UserRole, TravelStatus } from '../../../../generated/prisma';
+import { UserRole, TravelStatus } from '@/generated/prisma';
 
 interface TravelPageProps {
   params: Promise<{ travelId: string }>;
